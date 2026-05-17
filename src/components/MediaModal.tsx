@@ -1,57 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { MediaItem, TrackingType, MediaStatus, MediaCategory } from '../types';
 import { X } from 'lucide-react';
 
 interface MediaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: Partial<MediaItem>) => void;
+  onSave: (item: Partial<MediaItem>) => Promise<void>;
   item?: MediaItem | null;
   defaultCategory: MediaCategory;
 }
 
 export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: MediaModalProps) {
-  const [title, setTitle] = useState('');
-  const [alternateTitle, setAlternateTitle] = useState('');
-  const [status, setStatus] = useState<MediaStatus>('Watching');
-  const [trackingType, setTrackingType] = useState<TrackingType>('linear');
-  const [season, setSeason] = useState<number | ''>('');
-  const [episode, setEpisode] = useState<number | ''>(1);
-
-  useEffect(() => {
-    if (item) {
-      setTitle(item.title);
-      setAlternateTitle(item.alternateTitle || '');
-      setStatus(item.status);
-      setTrackingType(item.trackingType);
-      setSeason(item.season || '');
-      setEpisode(item.episode || '');
-    } else {
-      setTitle('');
-      setAlternateTitle('');
-      setStatus('Watching');
-      setTrackingType('linear');
-      setSeason('');
-      setEpisode(1);
-    }
-  }, [item, isOpen]);
+  const [title, setTitle] = useState(item?.title ?? '');
+  const [alternateTitle, setAlternateTitle] = useState(item?.alternateTitle ?? '');
+  const [status, setStatus] = useState<MediaStatus>(item?.status ?? 'Watching');
+  const [trackingType, setTrackingType] = useState<TrackingType>(item?.trackingType ?? 'linear');
+  const [season, setSeason] = useState<number | ''>(item?.season ?? '');
+  const [episode, setEpisode] = useState<number | ''>(item?.episode ?? 1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      id: item?.id,
-      title,
-      alternateTitle,
+
+    const savedItem: Partial<MediaItem> = {
+      title: title.trim(),
+      alternateTitle: alternateTitle.trim(),
       status,
       trackingType,
       season: trackingType === 'season' ? Number(season) || 1 : null,
       episode: Number(episode) || 1,
       category: item?.category || defaultCategory,
       updatedAt: Date.now()
-    });
-    onClose();
+    };
+
+    if (item?.id) {
+      savedItem.id = item.id;
+    }
+
+    try {
+      setIsSaving(true);
+      setErrorMessage('');
+      await onSave(savedItem);
+      onClose();
+    } catch (error) {
+      console.error('Error saving media item', error);
+      setErrorMessage('Could not save this item. Please try again.');
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -104,9 +102,13 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
             </div>
           </div>
           
+          {errorMessage && <p className="form-error">{errorMessage}</p>}
+
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">Save Changes</button>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={isSaving}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </div>

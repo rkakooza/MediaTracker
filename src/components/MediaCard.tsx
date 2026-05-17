@@ -3,12 +3,13 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 interface MediaCardProps {
   item: MediaItem;
+  isHighlighted?: boolean;
   onIncrement?: (id: string) => void;
   onEdit?: (item: MediaItem) => void;
   onDelete?: (id: string) => void;
 }
 
-export function MediaCard({ item, onIncrement, onEdit, onDelete }: MediaCardProps) {
+export function MediaCard({ item, isHighlighted = false, onIncrement, onEdit, onDelete }: MediaCardProps) {
   const getStatusClass = (status: string) => {
     switch (status) {
       case 'Watching': return 'status-watching';
@@ -27,7 +28,7 @@ export function MediaCard({ item, onIncrement, onEdit, onDelete }: MediaCardProp
   };
 
   return (
-    <div className="media-list-item">
+    <div id={`media-item-${item.id}`} className={`media-list-item ${isHighlighted ? 'media-list-item-highlighted' : ''}`}>
       <div className="list-item-main">
         <div className={`status-dot ${getStatusClass(item.status)}`}></div>
         <div className="list-item-titles">

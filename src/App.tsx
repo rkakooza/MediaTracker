@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './context/auth';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { CategoryView } from './pages/CategoryView';
