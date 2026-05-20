@@ -14,6 +14,7 @@ export function MediaCard({ item, isHighlighted = false, onIncrement, onEdit, on
     switch (status) {
       case 'Watching': return 'status-watching';
       case 'Completed': return 'status-completed';
+      case 'Plan to Watch': return 'status-plan-to-watch';
       case 'Dropped': return 'status-dropped';
       default: return 'status-watching';
     }
