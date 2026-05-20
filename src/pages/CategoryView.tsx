@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { db, auth } from '../firebase';
-import { collection, query, where, updateDoc, doc, deleteDoc, addDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, updateDoc, doc, deleteDoc, addDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { MediaCard } from '../components/MediaCard';
 import { MediaModal } from '../components/MediaModal';
 import { useToast } from '../context/toast';
 import type { MediaItem, MediaCategory } from '../types';
 import { Search, X } from 'lucide-react';
+import { areSimilarMediaTitles, normalizeMediaTitle, SimilarTitleError } from '../utils/mediaTitle';
 
 const categoryMap: Record<string, MediaCategory> = {
   'tv': 'TV Shows',
@@ -101,12 +102,36 @@ export function CategoryView() {
     }
   };
   
-  const handleSaveModal = async (savedData: Partial<MediaItem>) => {
+  const handleSaveModal = async (savedData: Partial<MediaItem>, options?: { allowSimilarTitle?: boolean }) => {
      if (!auth.currentUser) return;
      const previousItems = items;
      const { id: savedId, ...dataToSave } = savedData;
 
      try {
+       const normalizedTitle = normalizeMediaTitle(savedData.title);
+       if (!normalizedTitle) {
+         throw new Error('Title is required.');
+       }
+
+       const userMediaRef = collection(db, 'users', auth.currentUser.uid, 'media');
+       const userMediaSnapshot = await getDocs(userMediaRef);
+       const duplicateItem = userMediaSnapshot.docs.find(documentSnapshot => {
+         return documentSnapshot.id !== savedId && normalizeMediaTitle(documentSnapshot.data().title) === normalizedTitle;
+       });
+
+       if (duplicateItem) {
+         const duplicateTitle = duplicateItem.data().title || savedData.title;
+         throw new Error(`${duplicateTitle} is already in MediaTracker. Update the existing entry instead.`);
+       }
+
+       const similarItem = userMediaSnapshot.docs.find(documentSnapshot => {
+         return documentSnapshot.id !== savedId && areSimilarMediaTitles(documentSnapshot.data().title, savedData.title);
+       });
+
+       if (similarItem && !options?.allowSimilarTitle) {
+         throw new SimilarTitleError(similarItem.data().title || 'an existing entry');
+       }
+
        if (savedId) {
          const updatedItem = { ...items.find(i => i.id === savedId), ...savedData } as MediaItem;
          setItems(currentItems => sortItems(currentItems.map(i => i.id === savedId ? updatedItem : i)));
@@ -127,7 +152,8 @@ export function CategoryView() {
      } catch (err) {
        console.error('Error saving data', err);
        setItems(previousItems);
-       showToast('Could not save this item. Reverted the change.', 'error');
+       const message = err instanceof Error ? err.message : 'Could not save this item. Reverted the change.';
+       showToast(message, 'error');
        throw err;
      }
   };

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { MediaItem, TrackingType, MediaStatus, MediaCategory } from '../types';
 import { X } from 'lucide-react';
+import { SimilarTitleError } from '../utils/mediaTitle';
 
 interface MediaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: Partial<MediaItem>) => Promise<void>;
+  onSave: (item: Partial<MediaItem>, options?: { allowSimilarTitle?: boolean }) => Promise<void>;
   item?: MediaItem | null;
   defaultCategory: MediaCategory;
 }
@@ -19,6 +20,7 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
   const [episode, setEpisode] = useState<number | ''>(item?.episode ?? 1);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [similarTitle, setSimilarTitle] = useState('');
 
   if (!isOpen) return null;
 
@@ -43,11 +45,17 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
     try {
       setIsSaving(true);
       setErrorMessage('');
-      await onSave(savedItem);
+      await onSave(savedItem, { allowSimilarTitle: Boolean(similarTitle) });
       onClose();
     } catch (error) {
       console.error('Error saving media item', error);
-      setErrorMessage('Could not save this item. Please try again.');
+      if (error instanceof SimilarTitleError) {
+        setSimilarTitle(error.similarTitle);
+      } else {
+        setSimilarTitle('');
+      }
+
+      setErrorMessage(error instanceof Error ? error.message : 'Could not save this item. Please try again.');
       setIsSaving(false);
     }
   };
@@ -63,7 +71,17 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Primary Title</label>
-            <input required type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Naruto" />
+            <input
+              required
+              type="text"
+              value={title}
+              onChange={e => {
+                setTitle(e.target.value);
+                setSimilarTitle('');
+                setErrorMessage('');
+              }}
+              placeholder="e.g. Naruto"
+            />
           </div>
           
           <div className="form-group">
@@ -102,12 +120,14 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
             </div>
           </div>
           
-          {errorMessage && <p className="form-error">{errorMessage}</p>}
+          {errorMessage && (
+            <p className={similarTitle ? 'form-warning' : 'form-error'}>{errorMessage}</p>
+          )}
 
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={isSaving}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
+              {isSaving ? 'Saving...' : similarTitle ? 'Save Anyway' : 'Save Changes'}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import initialData from '../data/initialData.json';
 import { useToast } from '../context/toast';
 import type { MediaItem } from '../types';
 import { Download } from 'lucide-react';
+import { normalizeMediaTitle } from '../utils/mediaTitle';
 
 type ImportItem = Omit<MediaItem, 'id'>;
 
@@ -192,10 +193,16 @@ export function Dashboard() {
       const userRef = collection(db, 'users', auth.currentUser.uid, 'media');
       
       const existingDocs = await getDocs(userRef);
-      const existingTitles = new Set<string>();
-      existingDocs.forEach(d => existingTitles.add(String(d.data().title).trim().toLowerCase()));
+      const blockedTitles = new Set<string>();
+      existingDocs.forEach(d => blockedTitles.add(normalizeMediaTitle(String(d.data().title))));
       
-      const newItems = seedItems.filter(item => !existingTitles.has(item.title.trim().toLowerCase()));
+      const newItems = seedItems.filter(item => {
+        const normalizedTitle = normalizeMediaTitle(item.title);
+        if (blockedTitles.has(normalizedTitle)) return false;
+
+        blockedTitles.add(normalizedTitle);
+        return true;
+      });
       const preview = {
         newItems,
         duplicateCount: seedItems.length - newItems.length,
