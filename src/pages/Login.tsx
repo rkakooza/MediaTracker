@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { PlaySquare } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+  // const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const { currentUser } = useAuth();
 
@@ -21,11 +21,14 @@ export function Login() {
     e.preventDefault();
     setError('');
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      // Signup is intentionally disabled while MediaTracker is a personal app.
+      // To re-enable it later, restore createUserWithEmailAndPassword and the signup toggle below.
+      // if (isLogin) {
+      //   await signInWithEmailAndPassword(auth, email, password);
+      // } else {
+      //   await createUserWithEmailAndPassword(auth, email, password);
+      // }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to authenticate.');
     }
@@ -59,16 +62,16 @@ export function Login() {
             required
           />
           <button type="submit" className="btn-primary">
-            {isLogin ? 'Sign In' : 'Create Account'}
+            Sign In
           </button>
         </form>
         
-        <button 
+        {/* <button 
           onClick={() => setIsLogin(!isLogin)}
           style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', marginTop: '1rem', cursor: 'pointer' }}
         >
           {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
-        </button>
+        </button> */}
       </div>
     </div>
   );
