@@ -46,6 +46,21 @@ body {
   gap: 1.5rem;
 }
 
+.logout-button {
+  width: 100%;
+  margin-top: auto;
+  background: transparent;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  color: var(--accent-red);
+  background-color: var(--accent-red-soft);
+}
+
 .sidebar h1 {
   font-size: 1.5rem;
   font-weight: 800;
