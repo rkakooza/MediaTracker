@@ -212,6 +212,7 @@ export function CategoryView() {
       }
 
       setHighlightedItemId(itemId);
+      setSearchQuery('');
       window.setTimeout(() => setHighlightedItemId(currentId => currentId === itemId ? null : currentId), 1800);
     }
   };
