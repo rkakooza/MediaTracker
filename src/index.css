@@ -46,14 +46,30 @@ body {
   gap: 1.5rem;
 }
 
-.logout-button {
-  width: 100%;
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-top: auto;
+}
+
+.sidebar-action-button {
+  width: 100%;
   background: transparent;
   border: none;
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.sidebar-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sidebar-action-button:not(.logout-button):hover {
+  color: var(--accent-blue);
+  background-color: var(--accent-blue-soft);
 }
 
 .logout-button:hover {

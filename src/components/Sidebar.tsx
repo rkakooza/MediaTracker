@@ -1,9 +1,34 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { Tv, PlaySquare, Sword, BookOpen, LayoutDashboard, LogOut } from 'lucide-react';
+import { sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { Tv, PlaySquare, Sword, BookOpen, LayoutDashboard, LogOut, KeyRound } from 'lucide-react';
 import { auth } from '../firebase';
+import { useToast } from '../context/toast';
 
 export function Sidebar() {
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const { showToast } = useToast();
+
+  const handlePasswordReset = async () => {
+    const email = auth.currentUser?.email;
+
+    if (!email) {
+      showToast('Could not find an email address for this account.', 'error');
+      return;
+    }
+
+    try {
+      setIsSendingReset(true);
+      await sendPasswordResetEmail(auth, email);
+      showToast(`Password reset email sent to ${email}.`, 'success');
+    } catch (error) {
+      console.error('Error sending password reset email', error);
+      showToast('Could not send a password reset email. Please try again.', 'error');
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
   return (
     <aside className="sidebar">
       <div>
@@ -33,10 +58,17 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <button className="nav-link logout-button" onClick={() => signOut(auth)}>
-        <LogOut size={20} />
-        Sign Out
-      </button>
+      <div className="sidebar-actions">
+        <button className="nav-link sidebar-action-button" onClick={handlePasswordReset} disabled={isSendingReset}>
+          <KeyRound size={20} />
+          {isSendingReset ? 'Sending...' : 'Change Password'}
+        </button>
+
+        <button className="nav-link sidebar-action-button logout-button" onClick={() => signOut(auth)}>
+          <LogOut size={20} />
+          Sign Out
+        </button>
+      </div>
     </aside>
   );
 }
