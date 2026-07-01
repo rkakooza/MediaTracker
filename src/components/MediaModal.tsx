@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import type { MediaItem, TrackingType, MediaStatus, MediaCategory } from '../types';
+import type { MediaItem, TrackingType, MediaStatus } from '../types';
 import { X } from 'lucide-react';
 import { SimilarTitleError } from '../utils/mediaTitle';
+import { getStatusLabel } from '../utils/statusLabels';
 
 interface MediaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (item: Partial<MediaItem>, options?: { allowSimilarTitle?: boolean }) => Promise<void>;
   item?: MediaItem | null;
-  defaultCategory: MediaCategory;
+  defaultCategory: string;
 }
 
 export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: MediaModalProps) {
@@ -94,8 +95,8 @@ export function MediaModal({ isOpen, onClose, onSave, item, defaultCategory }: M
             <select value={status} onChange={e => setStatus(e.target.value as MediaStatus)}>
               <option value="Watching">Watching</option>
               <option value="Completed">Completed</option>
-              <option value="Plan to Watch">Plan to Watch</option>
-              <option value="Dropped">Dropped</option>
+              <option value="Plan to Watch">{getStatusLabel('Plan to Watch')}</option>
+              {item?.status === 'Dropped' && <option value="Dropped">Dropped</option>}
             </select>
           </div>
           

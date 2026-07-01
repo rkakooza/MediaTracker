@@ -5,16 +5,16 @@ import { collection, query, where, updateDoc, doc, deleteDoc, addDoc, onSnapshot
 import { MediaCard } from '../components/MediaCard';
 import { MediaModal } from '../components/MediaModal';
 import { useToast } from '../context/toast';
-import type { MediaItem, MediaCategory } from '../types';
+import type { MediaItem, MediaStatus } from '../types';
 import { Search, X } from 'lucide-react';
+import { getCategoryNameFromRoute } from '../utils/categories';
 import { areSimilarMediaTitles, normalizeMediaTitle, SimilarTitleError } from '../utils/mediaTitle';
+import { getStatusLabel } from '../utils/statusLabels';
 
-const categoryMap: Record<string, MediaCategory> = {
-  'tv': 'TV Shows',
-  'anime-jp': 'Japanese Anime',
-  'anime-cn': 'Chinese Anime',
-  'manga': 'Manga'
-};
+type StatusFilter = 'All' | MediaStatus;
+type SortMode = 'title-asc' | 'recently-updated';
+
+const statusFilters: StatusFilter[] = ['All', 'Completed', 'Plan to Watch'];
 
 const sortItems = (mediaItems: MediaItem[]) => {
   return [...mediaItems].sort((a, b) => {
@@ -22,6 +22,18 @@ const sortItems = (mediaItems: MediaItem[]) => {
     if (a.status !== 'Watching' && b.status === 'Watching') return 1;
     return a.title.localeCompare(b.title);
   });
+};
+
+const sortVisibleItems = (mediaItems: MediaItem[], sortMode: SortMode) => {
+  const sortedItems = [...mediaItems];
+
+  switch (sortMode) {
+    case 'recently-updated':
+      return sortedItems.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    case 'title-asc':
+    default:
+      return sortedItems.sort((a, b) => a.title.localeCompare(b.title));
+  }
 };
 
 export function CategoryView() {
@@ -32,10 +44,12 @@ export function CategoryView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MediaItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  const [sortMode, setSortMode] = useState<SortMode>('title-asc');
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const categoryName = categoryMap[id || 'tv'] ?? 'TV Shows';
+  const categoryName = getCategoryNameFromRoute(id);
 
   useEffect(() => {
     if (!auth.currentUser) {
@@ -159,8 +173,12 @@ export function CategoryView() {
   };
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredItems = sortVisibleItems(
+    statusFilter === 'All' ? items : items.filter(item => item.status === statusFilter),
+    sortMode
+  );
   const searchResults = normalizedSearchQuery
-    ? items.filter(item => {
+    ? filteredItems.filter(item => {
       const searchableText = [
         item.title,
         item.alternateTitle,
@@ -175,9 +193,24 @@ export function CategoryView() {
 
   const handleSearchResultClick = (itemId: string) => {
     const element = document.getElementById(`media-item-${itemId}`);
+    const scrollContainer = document.querySelector<HTMLElement>('.main-content');
+    const useContainerScroll = Boolean(scrollContainer && scrollContainer.scrollHeight > scrollContainer.clientHeight);
 
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const stickyToolbarHeight = document.querySelector('.category-toolbar')?.getBoundingClientRect().height ?? 0;
+      const topOffset = stickyToolbarHeight + 24;
+
+      if (scrollContainer && useContainerScroll) {
+        const containerTop = scrollContainer.getBoundingClientRect().top;
+        const elementTop = element.getBoundingClientRect().top - containerTop + scrollContainer.scrollTop - topOffset;
+
+        scrollContainer.scrollTo({ top: Math.max(elementTop, 0), behavior: 'smooth' });
+      } else {
+        const elementTop = element.getBoundingClientRect().top + window.scrollY - topOffset;
+
+        window.scrollTo({ top: Math.max(elementTop, 0), behavior: 'smooth' });
+      }
+
       setHighlightedItemId(itemId);
       window.setTimeout(() => setHighlightedItemId(currentId => currentId === itemId ? null : currentId), 1800);
     }
@@ -185,14 +218,36 @@ export function CategoryView() {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>{categoryName}</h2>
-        <button className="btn-primary" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-          + Add New Show
-        </button>
-      </div>
+      <div className="category-toolbar">
+        <div className="page-header category-page-header">
+          <h2>{categoryName}</h2>
+          <button className="btn-primary" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
+            + Add New Show
+          </button>
+        </div>
 
-      <div className="category-search">
+        <div className="category-controls">
+          <div className="status-filter-group" aria-label="Filter by status">
+            {statusFilters.map(filter => (
+              <button
+                key={filter}
+                className={statusFilter === filter ? 'active' : ''}
+                onClick={() => setStatusFilter(filter)}
+              >
+                {getStatusLabel(filter)}
+              </button>
+            ))}
+          </div>
+
+          <label className="sort-control">
+            <span>Sort</span>
+            <select value={sortMode} onChange={event => setSortMode(event.target.value as SortMode)}>
+              <option value="title-asc">Title A-Z</option>
+              <option value="recently-updated">Recently updated</option>
+            </select>
+          </label>
+        </div>
+
         <div className="search-control">
           <Search size={18} />
           <input
@@ -214,7 +269,7 @@ export function CategoryView() {
               searchResults.slice(0, 8).map(item => (
                 <button key={item.id} onClick={() => handleSearchResultClick(item.id)}>
                   <strong>{item.title}</strong>
-                  <span>{item.status}</span>
+                  <span>{getStatusLabel(item.status)}</span>
                   <span>
                     {item.status === 'Completed'
                       ? 'Completed'
@@ -235,9 +290,11 @@ export function CategoryView() {
         <p style={{ color: 'var(--text-secondary)' }}>Loading your list...</p>
       ) : items.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)' }}>No items found. Click "+ Add New Show" to start tracking!</p>
+      ) : filteredItems.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)' }}>No items match the selected filter.</p>
       ) : (
         <div className="media-list">
-          {items.map(item => (
+          {filteredItems.map(item => (
             <MediaCard 
               key={item.id} 
               item={item} 
@@ -259,6 +316,7 @@ export function CategoryView() {
           defaultCategory={categoryName}
         />
       )}
+
     </div>
   );
 }

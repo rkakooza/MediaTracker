@@ -1,6 +1,12 @@
-export type MediaCategory = 'TV Shows' | 'Japanese Anime' | 'Chinese Anime' | 'Manga';
+export type MediaCategory = string;
 export type MediaStatus = 'Watching' | 'Completed' | 'Plan to Watch' | 'Dropped';
 export type TrackingType = 'linear' | 'season';
+
+export interface MediaCategoryRecord {
+  id: string;
+  name: MediaCategory;
+  createdAt: number;
+}
 
 export interface MediaItem {
   id: string;
