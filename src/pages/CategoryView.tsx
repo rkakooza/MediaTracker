@@ -197,16 +197,17 @@ export function CategoryView() {
     const useContainerScroll = Boolean(scrollContainer && scrollContainer.scrollHeight > scrollContainer.clientHeight);
 
     if (element) {
-      const stickyToolbarHeight = document.querySelector('.category-toolbar')?.getBoundingClientRect().height ?? 0;
-      const topOffset = stickyToolbarHeight + 24;
+      const toolbarRect = document.querySelector('.category-toolbar')?.getBoundingClientRect();
 
       if (scrollContainer && useContainerScroll) {
         const containerTop = scrollContainer.getBoundingClientRect().top;
-        const elementTop = element.getBoundingClientRect().top - containerTop + scrollContainer.scrollTop - topOffset;
+        const toolbarOffset = toolbarRect ? Math.max(toolbarRect.top - containerTop, 0) + toolbarRect.height : 0;
+        const elementTop = element.getBoundingClientRect().top - containerTop + scrollContainer.scrollTop - toolbarOffset - 24;
 
         scrollContainer.scrollTo({ top: Math.max(elementTop, 0), behavior: 'smooth' });
       } else {
-        const elementTop = element.getBoundingClientRect().top + window.scrollY - topOffset;
+        const toolbarOffset = toolbarRect ? Math.max(toolbarRect.top, 0) + toolbarRect.height : 0;
+        const elementTop = element.getBoundingClientRect().top + window.scrollY - toolbarOffset - 24;
 
         window.scrollTo({ top: Math.max(elementTop, 0), behavior: 'smooth' });
       }
